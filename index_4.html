@@ -105,6 +105,7 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--y);heigh
 .sync b{font-size:18px}.sync span{font-size:14px;color:var(--mu)}.sync button{align-self:flex-start;padding:8px 14px}
 .sync.ok{border-color:var(--g);background:#E5F3E7}.sync.ok b{color:var(--g)}
 .snd{padding:6px 8px;font-size:18px;border-radius:10px;margin-left:6px;background:var(--pn)}
+.rtoast{position:fixed;left:16px;right:16px;top:16px;z-index:20;background:var(--y);color:#fff;font-weight:700;padding:14px 16px;border-radius:12px;box-shadow:0 8px 24px #14243A44;text-align:center}
 </style>
 </head>
 <body>
@@ -306,7 +307,7 @@ document.addEventListener("click",ev=>{
   if(a==="mssend")return msSend(+b.dataset.q);
   if(a==="msgo"){S.msi=S.msi||{};S.msi[S.room]=+b.dataset.i;save();return vMs()}
   if(a==="newroom"){S.room=null;save();return render()}
-  if(a==="room"){const v=($("rm").value||"").toUpperCase().replace(/[^A-Z0-9]/g,"");if(v.length<4){$("er").textContent="Digite o código que aparece no telão.";return}S.room=v;save();return render()}
+  if(a==="room"){const v=($("rm").value||"").toUpperCase().replace(/[^A-Z0-9]/g,"");if(v.length<4){$("er").textContent="Digite o código que aparece no telão.";return}S.room=v;S.joinedAt=Date.now();save();listen();return render()}
   if(a==="join"){if(!E.n){$("er").textContent="Toque no número da sua equipe.";return}S.team=E.n;S.name=teamList()[E.n-1];S.view="home";save();E={};render()}
   else if(a==="home"){S.view="home";save();E={};render()}
   else if(a==="leave"){S.view="join";save();E={};render()}
@@ -324,7 +325,17 @@ document.addEventListener("input",ev=>{const t=ev.target;if(t.dataset.r!==undefi
 document.addEventListener("keydown",ev=>{if(ev.key==="Enter"&&ev.target.id&&ev.target.id.startsWith("ms")&&ev.target.id.length===3){msSend(+ev.target.id[2]);return}if(ev.key==="Enter"&&ev.target.id==="rm"){document.querySelector("[data-a=room]")?.click();return}if(ev.key==="Enter"){if(S.view==="senha")document.querySelector('[data-a=unlock]')?.click();else if(S.view==="join")document.querySelector('[data-a=join]')?.click()}});
 if(S.view==="senha"||S.view==="play"||S.view==="end"){if(!S._m)S.view="home"}
 (function(){const q=(location.hash||"").match(/eq=([^&]*)/);if(q){try{const L=q[1].split("~").map(x=>decodeURIComponent(x)).filter(Boolean).slice(0,8);if(L.length){S.teams=L;if(S.team&&L[S.team-1])S.name=L[S.team-1];save()}}catch(e){}}
-  const m=(location.hash||"").match(/sala-([A-Za-z0-9]{4,8})/);if(m){if(S.room!==m[1].toUpperCase()){S.room=m[1].toUpperCase()}if(/(^|[#&])ms($|&)/.test(location.hash))S.view="ms";save()}})();
+  const m=(location.hash||"").match(/sala-([A-Za-z0-9]{4,8})/);if(m){if(S.room!==m[1].toUpperCase()){S.room=m[1].toUpperCase();S.joinedAt=Date.now()}if(/(^|[#&])ms($|&)/.test(location.hash))S.view="ms";save()}})();
+let RES=null;
+function applyReset(ts){S.resetAt=ts;S.mods={};S.pw={dobro:true,lider:true};save();stopT();E={};
+  if(S.team&&S.view!=="ms"&&S.view!=="join")S.view="home";render();
+  const d=document.createElement("div");d.className="rtoast";d.textContent="O facilitador zerou o placar. Vamos começar de novo!";document.body.appendChild(d);setTimeout(()=>d.remove(),4000);try{navigator.vibrate&&navigator.vibrate([60,40,60])}catch(e){}}
+function listen(){if(!S.room||typeof EventSource==="undefined")return;try{RES&&RES.close()}catch(e){}
+  if(!S.joinedAt){S.joinedAt=Date.now();save()}
+  try{RES=new EventSource(RELAY+"missaozero-frisia-"+S.room.toLowerCase()+"/sse?since=all");
+    RES.onmessage=e=>{try{const m=JSON.parse(e.data);if(m.event!=="message")return;const x=JSON.parse(m.message);
+      if(x.k==="reset"){const ts=m.time*1000+999;if(ts>Math.max(S.resetAt||0,S.joinedAt||0))applyReset(ts)}}catch(err){}}}catch(e){}}
+listen();
 syncScores();
 render();
 </script>
