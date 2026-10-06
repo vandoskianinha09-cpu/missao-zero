@@ -132,6 +132,20 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--y);heigh
 .mzt .msg small{display:block;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#7C8A12;margin-bottom:2px}
 .mzt .msg::after{content:"";position:absolute;left:58%;bottom:-12px;width:18px;height:18px;background:#fff;border-right:3px solid #194682;border-bottom:3px solid #194682;transform:rotate(45deg)}
 .mzt .sv{width:min(70vw,300px)}.mzt .sv svg{display:block;width:100%;height:auto}
+.prescard{display:flex;align-items:center;gap:12px;padding:14px;border-radius:12px;background:var(--pn);color:var(--ink);border:2px solid var(--acc);text-align:left;width:100%}
+.prescard b{display:block;font-size:17px;color:var(--y)}.prescard span{font-size:13px;color:var(--mu)}
+.prescard.ok{border-color:var(--g);background:#E5F3E7}.prescard.ok b{color:var(--g)}
+.sigpad{width:100%;height:190px;border:2px dashed var(--y);border-radius:12px;background:#FBFCFE;touch-action:none;display:block;cursor:crosshair;-webkit-user-select:none;user-select:none}
+.sigpad.has{border-style:solid}
+.chk{display:flex;align-items:center;gap:10px;font-size:17px;margin:0}.chk input{width:24px;height:24px;padding:0;margin:0;box-shadow:none;flex:none;accent-color:var(--y)}
+.sync.bad{border-color:var(--r);background:#FBE7E7}.sync.bad b{color:var(--r)}
+.presbar{position:fixed;left:0;right:0;bottom:0;z-index:30;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));background:linear-gradient(to top,var(--bg) 70%,#F5F4F200)}
+.presbar button{display:flex;align-items:center;gap:12px;width:100%;max-width:560px;margin:0 auto;padding:12px 16px;border-radius:14px;border:2px solid var(--acc);background:var(--y);color:#fff;text-align:left;box-shadow:0 8px 22px #14243A33}
+.presbar button b{display:block;font-size:17px}.presbar button span{font-size:13px;opacity:.85}
+.presbar button.ok{background:#E5F3E7;color:var(--g);border-color:var(--g)}.presbar button.ok span{color:var(--ink)}
+.presbar .ic{font-size:24px;line-height:1;flex:none}
+body.has-presbar .wrap{padding-bottom:110px}
+.spin{width:22px;height:22px;border:3px solid var(--ln);border-top-color:var(--y);border-radius:50%;animation:spn 1s linear infinite}@keyframes spn{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.mz-arm,.mz-guy,.mz-shine,.splash *{animation:none!important}}
 </style>
 </head>
@@ -184,6 +198,7 @@ function head(){return `<div class="brand"><img src="data:image/png;base64,iVBOR
 
 function render(){
   stopT();
+  try{presBar()}catch(e){}
   const v=S.view;
   if(v==="join")return vJoin();
   if(v==="home")return vHome();
@@ -191,6 +206,7 @@ function render(){
   if(v==="play")return vPlay();
   if(v==="end")return vEnd();
   if(v==="ms")return vMs();
+  if(v==="presenca")return vPres();
 }
 function vMs(){
   const back=S.team?"home":"join";
@@ -336,6 +352,13 @@ document.addEventListener("click",ev=>{
   if(b.dataset.p!==undefined){const ix=+b.dataset.p;if(!E.ord.includes(ix))E.ord.push(ix);const l=E.left;return vPlay()}
   const a=b.dataset.a;
   if(a==="mute"){S.mute=!S.mute;save();b.textContent=S.mute?"🔇":"🔊";if(!S.mute)sOk();return}
+  if(a==="pres"){if(S.view!=="presenca")S.presBack=S.view;S.view="presenca";save();return render()}
+  if(a==="presback"){clearTimeout(PTO);S.view=S.presBack&&S.presBack!=="presenca"?S.presBack:(S.team?"home":"join");save();return render()}
+  if(a==="presclr")return PPAD&&PPAD.clear();
+  if(a==="presok")return presSubmit();
+  if(a==="presresend")return presSend();
+  if(a==="prescode"){S.pk=null;save();return vPres()}
+  if(a==="presredo"){S.pres=null;save();E.pf=null;PSIG=[];return vPres()}
   if(a==="resend"){b.disabled=true;sendScore(E.m).then(()=>vEnd());return}
   if(a==="ms"){S.view="ms";save();render();return mzTrans("Momento de Segurança","Sua resposta vira insight no telão!",1400)}
   if(a==="msback"){S.view=b.dataset.b;save();return render()}
@@ -356,11 +379,108 @@ document.addEventListener("click",ev=>{
   else if(a==="reveal"){const v=$("rv").value.toUpperCase().trim();const ref=[...v].map(c=>RALPH.indexOf(c));if(v.length!==4||ref.some(x=>x<0)){$("er").textContent="Senha inválida. Confira as 4 letras no telão.";return}cur().risk.ref=ref;save();render()}
   else if(a==="finrisk"){const st=cur();if(st.rpts==null){st.rpts=st.risk.v.reduce((s,v,i)=>s+riskPts(v,st.risk.ref[i]),0);st.pts+=st.rpts}save();finish()}
 });
-document.addEventListener("input",ev=>{const t=ev.target;if(t.dataset.r!==undefined){const st=cur();st.risk.v[+t.dataset.r]=+t.value;$("o"+t.dataset.r).textContent=t.value;save()}if(t.id==="nm")E.nm=t.value});
+document.addEventListener("input",ev=>{const t=ev.target;if(t.id==="pf-mat"){const v=t.value.replace(/\D/g,"");if(v!==t.value)t.value=v}if(t.dataset.r!==undefined){const st=cur();st.risk.v[+t.dataset.r]=+t.value;$("o"+t.dataset.r).textContent=t.value;save()}if(t.id==="nm")E.nm=t.value});
+document.addEventListener("change",ev=>{const t=ev.target;if(t.id==="pf-terc"){$("pf-matw").hidden=t.checked;$("pf-empw").hidden=!t.checked;if(E.pf)E.pf.terc=t.checked}});
 document.addEventListener("keydown",ev=>{if(ev.key==="Enter"&&ev.target.id&&ev.target.id.startsWith("ms")&&ev.target.id.length===3){msSend(+ev.target.id[2]);return}if(ev.key==="Enter"&&ev.target.id==="rm"){document.querySelector("[data-a=room]")?.click();return}if(ev.key==="Enter"){if(S.view==="senha")document.querySelector('[data-a=unlock]')?.click();else if(S.view==="join")document.querySelector('[data-a=join]')?.click()}});
 if(S.view==="senha"||S.view==="play"||S.view==="end"){if(!S._m)S.view="home"}
 (function(){const q=(location.hash||"").match(/eq=([^&]*)/);if(q){try{const L=q[1].split("~").map(x=>decodeURIComponent(x)).filter(Boolean).slice(0,8);if(L.length){S.teams=L;if(S.team&&L[S.team-1])S.name=L[S.team-1];save()}}catch(e){}}
-  const m=(location.hash||"").match(/sala-([A-Za-z0-9]{4,8})/);if(m){if(S.room!==m[1].toUpperCase()){S.room=m[1].toUpperCase();S.joinedAt=Date.now()}if(/(^|[#&])ms($|&)/.test(location.hash))S.view="ms";save()}})();
+  const m=(location.hash||"").match(/sala-([A-Za-z0-9]{4,8})/);if(m){if(S.room!==m[1].toUpperCase()){S.room=m[1].toUpperCase();S.joinedAt=Date.now()}if(/(^|[#&])ms($|&)/.test(location.hash))S.view="ms";save()}
+  const hk=(location.hash||"").match(/[#&]k=([A-Za-z0-9_-]{16,64})/);if(hk&&S.room){S.pk=hk[1];S.pkAt=Date.now()}
+  if(/(^|[#&])presenca($|&)/.test(location.hash)){if(S.view!=="presenca")S.presBack=S.view;S.view="presenca"}
+  if(hk||/(^|[#&])presenca($|&)/.test(location.hash)){try{history.replaceState(null,"",location.pathname+location.search+location.hash.replace(/&k=[A-Za-z0-9_-]+/,"").replace(/&presenca(?=&|$)/,""))}catch(e){}}
+  save()})();
+/* ===== Lista de presença (FOR-00049): assinatura individual, criptografada ===== */
+function b64u(u){let s="";for(let i=0;i<u.length;i++)s+=String.fromCharCode(u[i]);return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")}
+function ub64(s){s=String(s).replace(/-/g,"+").replace(/_/g,"/");while(s.length%4)s+="=";const b=atob(s),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u}
+const presDone=()=>!!(S.pres&&S.pk&&S.pres.key===S.pk&&S.pres.st==="ok");
+const presPending=()=>!!(S.pres&&S.pk&&S.pres.key===S.pk&&S.pres.st!=="ok"&&S.pres.parts);
+let PSIG=[],PPAD=null,PTO=null,PLATE=false;
+/* chave antiga (de outro treinamento) não vale mais: após 14 h pede o código de novo */
+if(S.pk&&S.pkAt&&Date.now()-S.pkAt>14*3600e3&&!presPending()){S.pk=null;save()}
+/* barra fixa no rodapé: a lista de presença fica sempre visível, desde o começo */
+function presBar(){let el=document.getElementById("presbar");const show=S.view!=="presenca"&&S.view!=="play";
+  if(!el){el=document.createElement("div");el.id="presbar";el.className="presbar";document.body.appendChild(el)}
+  el.hidden=!show;document.body.classList.toggle("has-presbar",show);if(!show)return;
+  el.innerHTML=presDone()?`<button class="ok" data-a="pres"><span class="ic">✓</span><div><b>Presença registrada</b><span>${esc(S.pres.nome)}</span></div></button>`
+   :`<button data-a="pres"><span class="ic">✍️</span><div><b>Lista de presença</b><span>${presPending()?"Envio pendente · toque para conferir":"Toque para preencher e assinar"}</span></div><span style="margin-left:auto;font-size:24px">›</span></button>`}
+/* código da lista mostrado no telão: SALA-CODIGO (ex.: K7Q2PA-4F9KTR) */
+function presParseCode(v){v=String(v||"").toUpperCase().replace(/[^A-Z0-9-]/g,"");let room,code;
+  if(v.includes("-")){[room,code]=v.split("-").filter(Boolean)}else{room=v.slice(0,-6);code=v.slice(-6)}
+  if(!room||!code||!/^[A-Z0-9]{4,8}$/.test(room)||!/^[A-Z0-9]{6}$/.test(code))return null;return{room,code}}
+async function presDerive(code){const h=new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode("MZ-PRES|"+code)));return b64u(h.slice(0,16))}
+function presBtn(){return presDone()?`<button class="prescard ok" data-a="pres"><div><b>✓ Presença registrada</b><span>${esc(S.pres.nome)}</span></div></button>`
+  :`<button class="prescard" data-a="pres"><div><b>Assinar lista de presença</b><span>${presPending()?"Envio pendente · toque para conferir":"Assinatura individual, no seu celular"}</span></div><span style="margin-left:auto;font-size:24px">›</span></button>`}
+function presTop(){return (S.team?head():`<div class="brand">${BRAND}</div><div class="stripe"></div>`)+`<div><div class="eyebrow">Lista de presença · FOR-00049</div>`}
+function vPres(){clearTimeout(PTO);
+  if(presDone()){$("app").innerHTML=presTop()+`<h2>Presença registrada</h2></div>
+    <div class="sync ok"><b>✓ ${esc(S.pres.nome)}</b><span>Sua assinatura já está na lista do telão. Não é preciso assinar de novo.</span></div>
+    <button class="go" data-a="presback">Voltar</button><button class="link" data-a="presredo">Corrigir meus dados (assinar de novo)</button>`;return}
+  if(presPending()){const st=S.pres.st;$("app").innerHTML=presTop()+`<h2>${st==="fail"?"Não foi possível enviar":"Enviando…"}</h2></div>
+    <div class="sync ${st==="fail"?"bad":""}"><b>${esc(S.pres.nome)}</b><span>${st==="fail"?"Sem conexão com a internet. Seus dados ficaram guardados neste celular: toque em Reenviar quando a conexão voltar.":PLATE?"O telão ainda não confirmou o recebimento. Toque em Reenviar.":"Aguardando a confirmação do telão…"}</span>
+    ${st==="fail"||PLATE?`<button data-a="presresend">Reenviar</button>`:`<span class="spin"></span>`}</div>
+    <button data-a="presback">Voltar (continua enviando)</button><button class="link" data-a="presredo">Preencher de novo</button>`;
+    if(st!=="fail"&&!PLATE)PTO=setTimeout(()=>{PLATE=true;if(S.view==="presenca")vPres()},10000);return}
+  const f=E.pf||(E.pf={terc:false,mat:"",emp:"",nome:"",setor:"",code:""});const semChave=!S.pk||!S.room;
+  $("app").innerHTML=presTop()+`<h2>Assine a lista de presença</h2></div>
+  ${semChave?`<div><label for="pf-code">Código da lista <span class="mu" style="font-weight:500">(aparece no telão)</span></label><input id="pf-code" autocapitalize="characters" autocomplete="off" maxlength="16" value="${esc(f.code||"")}" placeholder="Ex.: K7Q2PA-4F9KTR" style="text-transform:uppercase;letter-spacing:.06em"></div>
+  <p class="mu" style="margin:-6px 0 0;font-size:13px">Se você entrou pelo QR code da lista, o código já vem preenchido sozinho.</p>`:`<p class="mu" style="margin:0;font-size:13px">Lista do telão conectada ✓ <button class="link" data-a="prescode" style="font-size:13px;padding:0 4px">usar outro código</button></p>`}
+  <label class="chk"><input type="checkbox" id="pf-terc" ${f.terc?"checked":""}> Sou terceiro</label>
+  <div id="pf-matw" ${f.terc?"hidden":""}><label for="pf-mat">Matrícula</label><input id="pf-mat" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="12" value="${esc(f.mat)}" placeholder="Somente números"></div>
+  <div id="pf-empw" ${f.terc?"":"hidden"}><label for="pf-emp">Empresa</label><input id="pf-emp" autocomplete="organization" maxlength="60" value="${esc(f.emp)}" placeholder="Nome da empresa"></div>
+  <div><label for="pf-nome">Nome completo</label><input id="pf-nome" autocomplete="name" maxlength="80" value="${esc(f.nome)}"></div>
+  <div><label for="pf-setor">Unidade/Setor</label><input id="pf-setor" maxlength="60" value="${esc(f.setor)}"></div>
+  <div><label>Assinatura <span class="mu" style="font-weight:500">(use o dedo)</span></label><canvas id="pf-sig" class="sigpad"></canvas></div>
+  <div class="err" id="pf-er"></div>
+  <div class="pw"><button data-a="presclr">Limpar</button><button class="go" style="flex:2;font-size:19px" data-a="presok">Confirmar presença</button></div>
+  <p class="mu" style="margin:0;font-size:13px">Seus dados serão usados apenas para o registro de presença neste treinamento.</p>
+  <button data-a="presback">Voltar</button>`;
+  PPAD=sigPad($("pf-sig"))}
+function sigPad(cv){const ctx=cv.getContext("2d");let cur=null;
+  const fit=()=>{const r=cv.getBoundingClientRect(),d=Math.max(1,window.devicePixelRatio||1);cv.width=Math.round(r.width*d);cv.height=Math.round(r.height*d);ctx.setTransform(d,0,0,d,0,0);draw()};
+  const draw=()=>{const r=cv.getBoundingClientRect();ctx.clearRect(0,0,r.width,r.height);ctx.strokeStyle="#0B1B33";ctx.fillStyle="#0B1B33";ctx.lineWidth=2.6;ctx.lineCap="round";ctx.lineJoin="round";
+    PSIG.forEach(s=>{if(s.length===1){ctx.beginPath();ctx.arc(s[0][0],s[0][1],1.4,0,7);ctx.fill();return}ctx.beginPath();ctx.moveTo(s[0][0],s[0][1]);for(let i=1;i<s.length;i++)ctx.lineTo(s[i][0],s[i][1]);ctx.stroke()});cv.classList.toggle("has",PSIG.length>0)};
+  const pos=e=>{const r=cv.getBoundingClientRect();return[Math.round((e.clientX-r.left)*10)/10,Math.round((e.clientY-r.top)*10)/10]};
+  cv.addEventListener("pointerdown",e=>{e.preventDefault();try{cv.setPointerCapture(e.pointerId)}catch(x){}cur=[pos(e)];PSIG.push(cur);draw()});
+  cv.addEventListener("pointermove",e=>{if(!cur)return;e.preventDefault();const ev=e.getCoalescedEvents?e.getCoalescedEvents():[e];(ev.length?ev:[e]).forEach(x=>cur.push(pos(x)));draw()});
+  const end=()=>{cur=null};cv.addEventListener("pointerup",end);cv.addEventListener("pointercancel",end);
+  cv.addEventListener("touchstart",e=>e.preventDefault(),{passive:false});cv.addEventListener("touchmove",e=>e.preventDefault(),{passive:false});
+  fit();return{clear(){PSIG=[];draw()}}}
+function rdp(p,eps){if(p.length<3)return p.slice();const a=p[0],b=p[p.length-1],dx=b[0]-a[0],dy=b[1]-a[1],L=Math.hypot(dx,dy);let dm=-1,ix=0;
+  for(let i=1;i<p.length-1;i++){const d=L<1e-6?Math.hypot(p[i][0]-a[0],p[i][1]-a[1]):Math.abs(dy*p[i][0]-dx*p[i][1]+b[0]*a[1]-b[1]*a[0])/L;if(d>dm){dm=d;ix=i}}
+  if(dm>eps){const l=rdp(p.slice(0,ix+1),eps),r=rdp(p.slice(ix),eps);return l.slice(0,-1).concat(r)}return[a,b]}
+/* traços vetoriais: grade 300×100, Ramer–Douglas–Peucker, delta-encoding ("x,y,dx,dy,…;…") */
+function sigEncode(strokes,eps){const all=strokes.flat();if(!all.length)return"";let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;all.forEach(([x,y])=>{x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y)});
+  const bw=Math.max(1,x1-x0),bh=Math.max(1,y1-y0),sc=Math.min(294/bw,94/bh,3),ox=(300-bw*sc)/2,oy=(100-bh*sc)/2;
+  return strokes.map(st=>{const q=[];rdp(st.map(([x,y])=>[(x-x0)*sc+ox,(y-y0)*sc+oy]),eps).forEach(([x,y])=>{const P=[Math.round(x),Math.round(y)],l=q[q.length-1];if(!l||l[0]!==P[0]||l[1]!==P[1])q.push(P)});
+    const o=[q[0][0],q[0][1]];for(let i=1;i<q.length;i++)o.push(q[i][0]-q[i-1][0],q[i][1]-q[i-1][1]);return o.join(",")}).join(";")}
+async function presEncrypt(obj,key){const k=await crypto.subtle.importKey("raw",ub64(key),{name:"AES-GCM"},false,["encrypt"]);const iv=crypto.getRandomValues(new Uint8Array(12));
+  const ct=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},k,new TextEncoder().encode(JSON.stringify(obj))));const all=new Uint8Array(12+ct.length);all.set(iv);all.set(ct,12);return b64u(all)}
+const PCH=3300;/* cada mensagem fica abaixo de 3,5 KB */
+async function presSubmit(){const er=$("pf-er"),f=E.pf;er.textContent="";
+  f.terc=$("pf-terc").checked;f.mat=($("pf-mat").value||"").replace(/\D/g,"");f.emp=($("pf-emp").value||"").trim().replace(/\s+/g," ");f.nome=($("pf-nome").value||"").trim().replace(/\s+/g," ");f.setor=($("pf-setor").value||"").trim().replace(/\s+/g," ");
+  if(!f.terc&&!f.mat){er.textContent="Informe a matrícula (somente números) ou marque “Sou terceiro”.";return}
+  if(f.terc&&!f.emp){er.textContent="Informe o nome da empresa.";return}
+  if(f.nome.length<3){er.textContent="Informe o nome completo.";return}
+  if(PSIG.reduce((n,s)=>n+s.length,0)<8){er.textContent="A assinatura é obrigatória.";return}
+  if(!window.crypto||!crypto.subtle){er.textContent="Este navegador não permite o envio seguro. Atualize o navegador ou use outro celular.";return}
+  if(!S.pk||!S.room){const cin=$("pf-code");f.code=cin?cin.value:"";const pc=presParseCode(f.code);
+    if(!pc){er.textContent="Digite o código da lista que aparece no telão (ex.: K7Q2PA-4F9KTR).";cin&&cin.focus();return}
+    try{const k=await presDerive(pc.code);if(S.room!==pc.room){S.room=pc.room;S.joinedAt=Date.now();try{listen()}catch(e){}}S.pk=k;S.pkAt=Date.now();save()}
+    catch(e){er.textContent="Não foi possível validar o código. Tente de novo.";return}}
+  let sig="";for(const eps of [.7,1.2,2,3]){sig=sigEncode(PSIG,eps);if(sig.length<=6000)break}
+  const id=b64u(crypto.getRandomValues(new Uint8Array(9)));
+  const btn=document.querySelector("[data-a=presok]");if(btn){btn.disabled=true;btn.textContent="Enviando…"}
+  try{const d=await presEncrypt({v:1,id,terc:f.terc,mat:f.terc?"":f.mat,emp:f.terc?f.emp:"",nome:f.nome,setor:f.setor,sig,t:Date.now()},S.pk);
+    const parts=[];for(let i=0;i<d.length;i+=PCH)parts.push(d.slice(i,i+PCH));
+    S.pres={id,key:S.pk,room:S.room,nome:f.nome,parts,st:"sending"};save();E.pf=null;PSIG=[];presSend()}
+  catch(e){if(btn){btn.disabled=false;btn.textContent="Confirmar presença"}er.textContent="Não foi possível preparar o envio. Tente de novo."}}
+async function presSend(){const P=S.pres;if(!P||!P.parts||P.st==="ok")return;P.st="sending";PLATE=false;save();if(S.view==="presenca")vPres();
+  let ok=true;for(let i=0;i<P.parts.length&&ok;i++){ok=await pub({k:"pres",id:P.id,i,n:P.parts.length,d:P.parts[i]})}
+  if(S.pres!==P||P.st==="ok")return;P.st=ok?"sent":"fail";save();if(S.view==="presenca")vPres();else if(S.view==="home"||S.view==="join")render()}
+function presOk(){const P=S.pres;P.st="ok";P.parts=null;save();clearTimeout(PTO);PLATE=false;
+  if(S.view==="presenca"){S.view=S.presBack&&S.presBack!=="presenca"?S.presBack:(S.team?"home":"join");save();render();sOk();mzTrans("Presença registrada","Obrigado, "+esc(P.nome.split(" ")[0])+"!",1800)}
+  else if(S.view==="home"||S.view==="join")render()}
+addEventListener("online",()=>{if(presPending()&&S.pres.st!=="sent")presSend()});
 let RES=null,CL={},REPLAY=true,kickMsg="";
 if(!S.dev){S.dev=Math.random().toString(36).slice(2,10);save()}
 function takenBy(t){return CL[t]&&CL[t]!==S.dev}
@@ -374,9 +494,10 @@ function listen(){if(!S.room||typeof EventSource==="undefined")return;try{RES&&R
   try{RES=new EventSource(RELAY+"missaozero-frisia-"+S.room.toLowerCase()+"/sse?since=all");
     RES.onopen=()=>{setTimeout(()=>{REPLAY=false;if(S.team&&!CL[S.team])pub({k:"claim",t:S.team,d:S.dev})},1500)};
     RES.onmessage=e=>{try{const m=JSON.parse(e.data);if(m.event!=="message")return;const x=JSON.parse(m.message);
-      if(x.k==="claim"){const t=+x.t;if(!CL[t])CL[t]=x.d;if(S.team===t&&CL[t]!==S.dev)kick();else if(S.view==="join")vJoin();return}if(x.k==="release"){const t=+x.t;if(CL[t]&&(x.d===CL[t]||x.d==="telao"))delete CL[t];if(S.team===t&&x.d==="telao"&&!REPLAY)kick("O facilitador liberou sua equipe. Escolha novamente.");if(S.view==="join")vJoin();return}if(x.k==="reset"){const ts=m.time*1000+999;if(ts>Math.max(S.resetAt||0,S.joinedAt||0))applyReset(ts)}}catch(err){}}}catch(e){}}
+      if(x.k==="claim"){const t=+x.t;if(!CL[t])CL[t]=x.d;if(S.team===t&&CL[t]!==S.dev)kick();else if(S.view==="join")vJoin();return}if(x.k==="release"){const t=+x.t;if(CL[t]&&(x.d===CL[t]||x.d==="telao"))delete CL[t];if(S.team===t&&x.d==="telao"&&!REPLAY)kick("O facilitador liberou sua equipe. Escolha novamente.");if(S.view==="join")vJoin();return}if(x.k==="pres_ok"){if(S.pres&&x.id===S.pres.id&&S.pres.st!=="ok")presOk();return}if(x.k==="reset"){const ts=m.time*1000+999;if(ts>Math.max(S.resetAt||0,S.joinedAt||0))applyReset(ts)}}catch(err){}}}catch(e){}}
 listen();
 syncScores();
+if(presPending()&&S.pres.st!=="sent")presSend();else if(presPending()){S.pres.st="sent";save()}
 splash();
 render();
 </script>
